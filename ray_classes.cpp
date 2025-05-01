@@ -272,9 +272,8 @@ bool Sphere3D::get_intersection(Ray3D ray, Point3D &point, Vector3D &normal)
       normal.normalize();
       return true; 
    }
-   return false; 
+   return false;
 }
-
 //----------------------------------------------
 Phong::Phong()
 {
@@ -370,6 +369,147 @@ void Phong::GetShade(Point3D point, Vector3D normal, ColorRGB & color)
          color.add(specular);
       }
    }
+}
+
+void Cylinder3D::set(Point3D base, Vector3D axisDir, float r, float h)
+{
+    baseCenter = base;
+    axis = axisDir;
+    axis.normalize();
+    radius = r;
+    height = h;
+}
+
+string Cylinder3D::print()
+{
+    cout << "Cylinder3D: baseCenter = ";
+    baseCenter.print();
+    cout << ", axis = ";
+    axis.print();
+    cout << ", radius = " << radius;
+    cout << ", height = " << height << endl;
+    return "";
+}
+//----------------------------------------------
+
+bool Cylinder3D::get_intersection(Ray3D ray, Point3D &point, Vector3D &normal)
+{
+    Vector3D d = ray.dir;
+    Vector3D oc;
+    oc.set(ray.point.px - baseCenter.px,
+           ray.point.py - baseCenter.py,
+           ray.point.pz - baseCenter.pz);
+
+    Vector3D axisDir = axis;
+
+    // Project d and oc onto plane orthogonal to axis
+    float d_dot_a = d.dot(axisDir);
+    Vector3D d_proj = d;
+    d_proj.sub(Vector3D{axisDir.vx * d_dot_a, axisDir.vy * d_dot_a, axisDir.vz * d_dot_a});
+
+    float oc_dot_a = oc.dot(axisDir);
+    Vector3D oc_proj = oc;
+    oc_proj.sub(Vector3D{axisDir.vx * oc_dot_a, axisDir.vy * oc_dot_a, axisDir.vz * oc_dot_a});
+
+    float A = d_proj.dot(d_proj);
+    float B = 2 * d_proj.dot(oc_proj);
+    float C = oc_proj.dot(oc_proj) - radius * radius;
+    float discriminant = B * B - 4 * A * C;
+
+    float t_body = -1;
+    if (discriminant >= 0)
+    {
+        float sqrtD = sqrt(discriminant);
+        float t0 = (-B - sqrtD) / (2 * A);
+        float t1 = (-B + sqrtD) / (2 * A);
+
+        for (float t : {t0, t1})
+        {
+            if (t < 0) continue;
+
+            Point3D p = ray.get_sample(t);
+            Vector3D v;
+            v.set(p.px - baseCenter.px, p.py - baseCenter.py, p.pz - baseCenter.pz);
+            float h = v.dot(axisDir);
+            if (h >= 0 && h <= height)
+            {
+                t_body = t;
+                break;
+            }
+        }
+    }
+
+    // Check caps
+    float t_cap = -1;
+    Point3D caps[2] = {
+        baseCenter,
+        Point3D{baseCenter.px + axisDir.vx * height,
+                baseCenter.py + axisDir.vy * height,
+                baseCenter.pz + axisDir.vz * height}
+    };
+
+    for (int i = 0; i < 2; i++)
+    {
+        Vector3D n = (i == 0) ? axisDir : Vector3D{-axisDir.vx, -axisDir.vy, -axisDir.vz};
+        Vector3D v;
+        v.set(caps[i].px - ray.point.px, caps[i].py - ray.point.py, caps[i].pz - ray.point.pz);
+        float denom = ray.dir.dot(n);
+        if (fabs(denom) > 1e-6)
+        {
+            float t = v.dot(n) / denom;
+            if (t >= 0)
+            {
+                Point3D p = ray.get_sample(t);
+                float dx = p.px - caps[i].px;
+                float dy = p.py - caps[i].py;
+                float dz = p.pz - caps[i].pz;
+                float dist2 = dx * dx + dy * dy + dz * dz;
+                if (dist2 <= radius * radius)
+                {
+                    if (t_cap < 0 || t < t_cap)
+                        t_cap = t;
+                }
+            }
+        }
+    }
+
+    // Final decision
+    float t_final = -1;
+    bool is_cap = false;
+
+    if (t_body > 0 && (t_cap < 0 || t_body < t_cap))
+        t_final = t_body;
+    else if (t_cap > 0)
+    {
+        t_final = t_cap;
+        is_cap = true;
+    }
+
+    if (t_final > 0)
+    {
+        point = ray.get_sample(t_final);
+        if (!is_cap)
+        {
+            Vector3D v;
+            v.set(point.px - baseCenter.px,
+                  point.py - baseCenter.py,
+                  point.pz - baseCenter.pz);
+            float proj = v.dot(axisDir);
+            Point3D c = {
+                baseCenter.px + axisDir.vx * proj,
+                baseCenter.py + axisDir.vy * proj,
+                baseCenter.pz + axisDir.vz * proj};
+            normal.set(point.px - c.px, point.py - c.py, point.pz - c.pz);
+            normal.normalize();
+        }
+        else
+        {
+            normal = (point.distance(caps[0]) < 1e-3) ? axisDir : Vector3D{-axisDir.vx, -axisDir.vy, -axisDir.vz};
+        }
+        return true;
+    }
+
+    return false;
 }
 
 //----------------------------------------------

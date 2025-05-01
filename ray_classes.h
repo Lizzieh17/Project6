@@ -2,7 +2,7 @@
 // Program: ray_classes.h
 // Purpose: Definition of several C++ classes
 //          to support ray tracing application.
-//        
+//
 //          ColorRGB - store RGB color values.
 //          Point3D - store XYZ point coordinates.
 //          Vector3D - store XYZ vector coordinates.
@@ -13,7 +13,7 @@
 //    These classes have no private variables so
 //    they should be used with care (since there
 //    is no data hiding provided).
-//    
+//
 // Author:  John Gauch
 // Date:    Spring 2019
 //----------------------------------------------
@@ -29,75 +29,88 @@ const bool DEBUG = false;
 //----------------------------------------------
 class ColorRGB
 {
-   public:
-      float R, G, B;
+public:
+   float R, G, B;
 
-      void set(float r, float g, float b);
-      string print();
-      void mult(float c);
-      void mult(ColorRGB c);
-      void add(ColorRGB c);
-      void sub(ColorRGB c);
-      void clamp();
+   void set(float r, float g, float b);
+   string print();
+   void mult(float c);
+   void mult(ColorRGB c);
+   void add(ColorRGB c);
+   void sub(ColorRGB c);
+   void clamp();
 };
 
 //----------------------------------------------
 class Point3D
 {
-   public:
-      float px, py, pz;
+public:
+   float px, py, pz;
 
-      void set(float x, float y, float z);
-      string print();
-      float distance(Point3D p);
+   void set(float x, float y, float z);
+   string print();
+   float distance(Point3D p);
 };
 
 //----------------------------------------------
 class Vector3D
 {
-   public:
-      float vx, vy, vz;
+public:
+   float vx, vy, vz;
 
-      void set(float x, float y, float z);
-      string print();
-      void normalize();
-      float dot(Vector3D v);
-      void mult(float c);
-      void add(Vector3D v);
-      void sub(Vector3D v);
+   void set(float x, float y, float z);
+   string print();
+   void normalize();
+   float dot(Vector3D v);
+   void mult(float c);
+   void add(Vector3D v);
+   void sub(Vector3D v);
 };
 
 //----------------------------------------------
 class Ray3D
 {
-   public:
-      Point3D point;
-      Vector3D dir;
+public:
+   Point3D point;
+   Vector3D dir;
 
-      void set(Point3D p, Vector3D d);
-      void set(Point3D p1, Point3D p2);
-      string print();
-      Point3D get_sample(float t);
+   void set(Point3D p, Vector3D d);
+   void set(Point3D p1, Point3D p2);
+   string print();
+   Point3D get_sample(float t);
 };
 
 //----------------------------------------------
 class Sphere3D
 {
-   public:
-      Point3D center;
-      Vector3D motion;
-      float radius;
+public:
+   Point3D center;
+   Vector3D motion;
+   float radius;
 
-      void set(Point3D p, float r) ;
-      void set(Point3D p, Vector3D m, float r) ;
-      string print() ;
-      bool get_intersection(Ray3D ray, Point3D &point, Vector3D &normal);
+   void set(Point3D p, float r);
+   void set(Point3D p, Vector3D m, float r);
+   string print();
+   bool get_intersection(Ray3D ray, Point3D &point, Vector3D &normal);
 };
 
 //----------------------------------------------
+class Cylinder3D
+{
+public:
+   Point3D baseCenter;
+   Vector3D axis;
+   float radius;
+   float height;
+
+   void set(Point3D base, Vector3D dir, float r, float h);
+   string print();
+   bool get_intersection(Ray3D ray, Point3D &point, Vector3D &normal);
+};
+//----------------------------------------------
 class Phong
 {
- public:
+public:
    // Constructors
    Phong();
    ~Phong();
@@ -106,18 +119,18 @@ class Phong
    void SetCamera(Point3D pos);
    void SetLight(ColorRGB color, Vector3D dir);
    void SetObject(ColorRGB color, float ka, float kd, float ks, float kp);
-    
-   // Get method
-   void GetShade(Point3D point, Vector3D normal, ColorRGB & color);
 
- private:
+   // Get method
+   void GetShade(Point3D point, Vector3D normal, ColorRGB &color);
+
+private:
    // Camera
    Point3D CameraPos;
 
    // Light
    ColorRGB LightColor;
    Vector3D LightDir;
-   
+
    // Object
    ColorRGB ObjectColor;
    float Ka, Kd, Ks, Kp;
