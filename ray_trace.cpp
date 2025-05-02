@@ -25,6 +25,13 @@ unsigned char image[YDIM][XDIM][3];
 float position = 1;
 float sphereAngle = 0.0;
 float cylinderAngle = 5.0;
+//---------------------------------------
+// Calculate random value between [min..max]
+//---------------------------------------
+float myrand(float min, float max)
+{
+   return rand() * (max - min) / RAND_MAX + min;
+}
 
 //---------------------------------------
 // Check to see if point is in shadow

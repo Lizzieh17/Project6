@@ -402,7 +402,6 @@ bool Cylinder3D::get_intersection(Ray3D ray, Point3D &point, Vector3D &normal)
 
     Vector3D axisDir = axis;
 
-    // Project d and oc onto plane orthogonal to axis
     float d_dot_a = d.dot(axisDir);
     Vector3D d_proj = d;
     d_proj.sub(Vector3D{axisDir.vx * d_dot_a, axisDir.vy * d_dot_a, axisDir.vz * d_dot_a});
