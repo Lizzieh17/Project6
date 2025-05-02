@@ -1,8 +1,8 @@
 //---------------------------------------
 // Program: ray_trace.cpp
-// Purpose: Ray tracing with orbiting sphere around center
-// Author:  John Gauch + Modified
-// Date:    Modified April 2025
+// Purpose: Assignement 6
+// Author:  Lizzie Howell
+// Date:   Spring 2025
 //---------------------------------------
 #include <math.h>
 #include <stdio.h>
@@ -15,18 +15,20 @@
 #include <GL/glut.h>
 #endif
 using namespace std;
-// Include ray tracing and phong shading code
 #include "ray_classes.h"
 
-// Global variables
 #define XDIM 800
 #define YDIM 800
+#define MAX_FIXED_CYLINDERS 8
 unsigned char image[YDIM][XDIM][3];
 float position = 1;
 float sphereAngle = 0.0;
 float cylinderAngle = 5.0;
+int num_fixed_cylinders = 0;
+Cylinder3D fixed_cylinders[MAX_FIXED_CYLINDERS];
+
 //---------------------------------------
-// Calculate random value between [min..max]
+// Generate a random float between min and max
 //---------------------------------------
 float myrand(float min, float max)
 {
@@ -34,11 +36,10 @@ float myrand(float min, float max)
 }
 
 //---------------------------------------
-// Check to see if point is in shadow
+// Check if a point is in shadow
 //---------------------------------------
-bool in_shadow(Point3D pt, Vector3D dir, int current, Sphere3D sphere[], int count, Cylinder3D *cylinder)
+bool in_shadow(Point3D pt, Vector3D dir, int current, Sphere3D sphere[], int scount, Cylinder3D cylinder, Cylinder3D fixed_cyls[])
 {
-   // Offset ray origin slightly to avoid self-shadowing
    Point3D shadow_origin = pt;
    shadow_origin.px += 0.001 * dir.vx;
    shadow_origin.py += 0.001 * dir.vy;
@@ -50,8 +51,8 @@ bool in_shadow(Point3D pt, Vector3D dir, int current, Sphere3D sphere[], int cou
    Point3D point;
    Vector3D normal;
 
-   // Check all spheres except the current one
-   for (int i = 0; i < count; i++)
+   // Check center sphere and orbiting sphere
+   for (int i = 0; i < scount; i++)
    {
       if ((current != i) && sphere[i].get_intersection(shadow_ray, point, normal))
       {
@@ -64,8 +65,8 @@ bool in_shadow(Point3D pt, Vector3D dir, int current, Sphere3D sphere[], int cou
       }
    }
 
-   // Check the cylinder if it's not the current object
-   if (cylinder != nullptr && current != 2 && cylinder->get_intersection(shadow_ray, point, normal))
+   // Check orbiting cylinder
+   if (current != 2 && cylinder.get_intersection(shadow_ray, point, normal))
    {
       Vector3D offset;
       offset.set(point.px - shadow_origin.px,
@@ -75,64 +76,63 @@ bool in_shadow(Point3D pt, Vector3D dir, int current, Sphere3D sphere[], int cou
          return true;
    }
 
+   // Check fixed cylinders
+   for (int i = 0; i < num_fixed_cylinders; i++)
+   {
+      if (current != (3 + i) && fixed_cyls[i].get_intersection(shadow_ray, point, normal))
+      {
+         Vector3D offset;
+         offset.set(point.px - shadow_origin.px,
+                    point.py - shadow_origin.py,
+                    point.pz - shadow_origin.pz);
+         if (offset.dot(dir) > 0)
+            return true;
+      }
+   }
+
    return false;
 }
-
 //---------------------------------------
-// Ray tracing function
+// Ray trace function
 //---------------------------------------
 void ray_trace()
 {
-   // Define camera point
    Point3D camera;
    camera.set(0, 0, -position);
 
-   // Define light source
+   // create light source
    ColorRGB light_color;
    light_color.set(255, 255, 255);
    Vector3D light_dir;
    light_dir.set(-0.5, -0.5, -1.5);
    light_dir.normalize();
 
-   // Define central sphere
+   // create center sphere
    Sphere3D center_sphere;
    Point3D center_pos;
    center_pos.set(0, 0, 5);
-   float center_radius = 1.0;
-   center_sphere.set(center_pos, center_radius);
+   center_sphere.set(center_pos, 1.0);
 
-   // Define orbiting sphere
+   // create orbiting sphere
    Sphere3D orbiting_sphere;
-   float orbit_radius = 2.0;
-   float orbit_sphere_radius = 1.0;
    float angleRad = sphereAngle * M_PI / 180.0;
-   float x = center_pos.px + orbit_radius * cos(angleRad);
-   float z = center_pos.pz + orbit_radius * sin(angleRad);
    Point3D orbit_pos;
-   orbit_pos.set(x, -0.75, z);
-   orbiting_sphere.set(orbit_pos, orbit_sphere_radius);
+   orbit_pos.set(center_pos.px + 2.0 * cos(angleRad), -0.75, center_pos.pz + 2.0 * sin(angleRad));
+   orbiting_sphere.set(orbit_pos, 1.0);
 
-   // Define orbiting cylinder
+   // Create forbiting cylinder
    Cylinder3D cylinder;
-   float cyl_orbit_radius = 4.0;
    float cylRad = cylinderAngle * M_PI / 180.0;
-   float cyl_x = center_pos.px + cyl_orbit_radius * cos(cylRad);
-   float cyl_z = center_pos.pz + cyl_orbit_radius * sin(cylRad);
    Point3D cylinder_pos;
-   cylinder_pos.set(cyl_x, -0.5, cyl_z);
+   cylinder_pos.set(center_pos.px + 4.0 * cos(cylRad), -0.5, center_pos.pz + 4.0 * sin(cylRad)); // position cylinder in orbit
    Vector3D cylinder_axis;
    cylinder_axis.set(0, -0.75, 0);
-   float cylinder_radius = 0.5;
-   float cylinder_height = 1.0;
-   cylinder.set(cylinder_pos, cylinder_axis, cylinder_radius, cylinder_height);
+   cylinder.set(cylinder_pos, cylinder_axis, 0.5, 1.0);
 
-   // Loop over pixels
    for (int y = 0; y < YDIM; y++)
       for (int x = 0; x < XDIM; x++)
       {
-         image[y][x][0] = 0;
-         image[y][x][1] = 0;
-         image[y][x][2] = 0;
+         image[y][x][0] = image[y][x][1] = image[y][x][2] = 0;
 
          float xpos = (x - XDIM / 2) * 2.0 / XDIM;
          float ypos = (y - YDIM / 2) * 2.0 / YDIM;
@@ -142,12 +142,32 @@ void ray_trace()
          Ray3D ray;
          ray.set(camera, pixel);
 
-         // Try all objects
-         Point3D p1, p2, p3;
-         Vector3D n1, n2, n3;
+         Point3D p1, p2, p3, pf; // intersection points for orbiting sphere, center sphere, and orbiting cylinder
+         Vector3D n1, n2, n3, nf; // normals for orbiting sphere, center sphere, and orbiting cylinder
+
+         // Check for intersection with orbiting sphere, center sphere, and orbiting cylinder
          bool hit1 = orbiting_sphere.get_intersection(ray, p1, n1);
          bool hit2 = center_sphere.get_intersection(ray, p2, n2);
          bool hit3 = cylinder.get_intersection(ray, p3, n3);
+
+         // check for intersection with fixed cylinders
+         bool hit_fixed = false;
+         int fixed_hit_index = -1;
+         for (int i = 0; i < num_fixed_cylinders; i++)
+         {
+            Point3D pt;
+            Vector3D nt;
+            if (fixed_cylinders[i].get_intersection(ray, pt, nt))
+            {
+               if (!hit_fixed || pt.distance(camera) < pf.distance(camera))
+               {
+                  pf = pt;
+                  nf = nt;
+                  hit_fixed = true;
+                  fixed_hit_index = i;
+               }
+            }
+         }
 
          Point3D final_p;
          Vector3D final_n;
@@ -155,8 +175,12 @@ void ray_trace()
          bool hit = false;
          int current_object = -1;
 
+         // Determine which object was hit based on distance from camera
+         // and assign final color
+         // 0 - orbiting sphere, 1 - center sphere, 2 - orbiting cylinder, 3+ - fixed cylinders
          if (hit1 && (!hit2 || p1.distance(camera) < p2.distance(camera)) &&
-             (!hit3 || p1.distance(camera) < p3.distance(camera)))
+             (!hit3 || p1.distance(camera) < p3.distance(camera)) &&
+             (!hit_fixed || p1.distance(camera) < pf.distance(camera)))
          {
             final_p = p1;
             final_n = n1;
@@ -164,7 +188,8 @@ void ray_trace()
             current_object = 0;
             hit = true;
          }
-         else if (hit2 && (!hit3 || p2.distance(camera) < p3.distance(camera)))
+         else if (hit2 && (!hit3 || p2.distance(camera) < p3.distance(camera)) &&
+                  (!hit_fixed || p2.distance(camera) < pf.distance(camera)))
          {
             final_p = p2;
             final_n = n2;
@@ -172,12 +197,20 @@ void ray_trace()
             current_object = 1;
             hit = true;
          }
-         else if (hit3)
+         else if (hit3 && (!hit_fixed || p3.distance(camera) < pf.distance(camera)))
          {
             final_p = p3;
             final_n = n3;
             final_color.set(0, 200, 0); // green
             current_object = 2;
+            hit = true;
+         }
+         else if (hit_fixed)
+         {
+            final_p = pf;
+            final_n = nf;
+            final_color.set(255, 150, 200); // pink for fixed cylinders
+            current_object = 3 + fixed_hit_index;
             hit = true;
          }
 
@@ -188,11 +221,9 @@ void ray_trace()
             shader.SetLight(light_color, light_dir);
             shader.SetObject(final_color, 0.3, 0.4, 0.3, 10);
 
-            Sphere3D spheres[2];
-            spheres[0] = orbiting_sphere;
-            spheres[1] = center_sphere;
+            Sphere3D spheres[2] = {orbiting_sphere, center_sphere};
+            bool shadow = in_shadow(final_p, light_dir, current_object, spheres, 2, cylinder, fixed_cylinders);
 
-            bool shadow = in_shadow(final_p, light_dir, current_object, spheres, 2, &cylinder);
             if (shadow)
             {
                final_color.R *= 0.3;
@@ -228,6 +259,26 @@ void idle()
 }
 
 //---------------------------------------
+// Initialize fixed cylinders with random positions and dimensions
+//---------------------------------------
+void init_fixed_cylinders(){
+   num_fixed_cylinders = myrand(2, MAX_FIXED_CYLINDERS);
+   for (int i = 0; i < num_fixed_cylinders; i++)
+   {
+      float x = myrand(-4, 4);
+      float y = myrand(-1, 1);
+      float z = myrand(-4, 4);
+      Point3D pos;
+      pos.set(x, y, z);
+      Vector3D axis;
+      axis.set(0, -1, 0);
+      float radius = myrand(0.2, 0.5);
+      float height = myrand(0.5, 1.5);
+      fixed_cylinders[i].set(pos, axis, radius, height);
+   }
+}
+
+//---------------------------------------
 // Init function for OpenGL
 //---------------------------------------
 void init()
@@ -238,7 +289,8 @@ void init()
         << "   '+' - increase camera distance\n"
         << "   '-' - decrease camera distance\n"
         << "   'q' - quit program\n";
-
+   
+   init_fixed_cylinders();
    ray_trace();
 }
 
@@ -278,6 +330,7 @@ int main(int argc, char *argv[])
    glutInitWindowPosition(0, 0);
    glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
    glutCreateWindow("Ray Trace");
+   srand(time(NULL));
    init();
 
    glutDisplayFunc(display);

@@ -15,6 +15,7 @@
 //    is no data hiding provided).
 //
 // Author:  John Gauch
+// Modified by: Lizzie Howell Spring 2025 for Assignment 6
 // Date:    Spring 2019
 //----------------------------------------------
 #include <iostream>

@@ -15,6 +15,7 @@
 //    is no data hiding provided).
 //    
 // Author:  John Gauch
+// Modified by: Lizzie Howell for Spring 2025 Assignment 6
 // Date:    Spring 2019
 //----------------------------------------------
 #include "ray_classes.h"
